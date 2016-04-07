@@ -1,0 +1,9 @@
+{ 
+	"config": 
+	{ 
+		"user": "username",
+		"pwd": "pwdvalue",
+		"db": "dbname",
+		"host": "hostvalue"
+	}
+}
