@@ -45,11 +45,11 @@ def is_valid_json_file(pathToFile):
 
 def is_valid_dir(pathToDir):
 	# Checks for a valid directory
-    if not os.path.isdir(path):
-        msg = "{0} is not a directory".format(path)
+    if not os.path.isdir(pathToDir):
+        msg = "{0} is not a directory".format(pathToDir)
         raise argparse.ArgumentTypeError(msg)
     else:
-        return path
+        return pathToDir
 ################################### END Utils ###################################
 
 
@@ -59,20 +59,25 @@ def check_args():
 	# Returns: <string>"config.json" or <obj>args
 	parse = argparse.ArgumentParser(formatter_class = argparse.RawTextHelpFormatter)
 
-	parse.add_argument('--config', action = 'store', type = is_valid_file, help = 
+	parse.add_argument('--config', action = 'store', type = is_valid_json_file, help = 
 						(	
-							"Path to a config file with the following contents:\n"
+							"Path to a config JSON file with the following contents [default: \"config.json\"]:\n"
 							"\n"
-							"[client]\n"
-							"user      = [root]\n"
-							"password  = [root-pass]\n"
-							"host      = [localhost]\n"
+							"{\n"
+							"\"config\":\n" 
+							"\t{\n" 
+								"\t\"user\": \"username\",\n"
+								"\t\"pwd\": \"pwdvalue\",\n"
+								"\t\"db\": \"dbname\",\n"
+								"\t\"host\": \"hostvalue\"\n"
+							"\t}\n"
+							"}\n"
 						)
 					)
-	parser.add_argument('--directory', type = is_valid_dir, required = True, help = 'Path to backup directory')
+	parse.add_argument('--directory', type = is_valid_dir, required = True, help = 'Path to backup directory')
 	# If not config
 	if not parse.parse_args().config:
-		return is_valid_file('config.json')
+		return is_valid_json_file('config.json')
 	return parse.parse_args()
 
 
@@ -81,8 +86,14 @@ def check_args():
 def read_config(pathToFile):
 	with open(pathToFile) as config_file:
 		config = json.load(config_file)
-	pprint(config)
-	print(config['config'])
+	mysql_db_list(config['config'])
+	
+
+def mysql_db_list(configObj):
+	to_ignore = ['information_schema', 'performance_schema', 'test']
+	command = ['mysql', '-u '+configObj['user'], '-p', '-h '+configObj['host'], '-se', 'show databases']
+	pprint(command)
+	#p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 ################################### END Core funcs ###################################
 
 ################################### Main ###################################
