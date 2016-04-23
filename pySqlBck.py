@@ -19,6 +19,18 @@ import os
 import argparse
 import json
 from pprint import pprint
+import pymysql.cursors
+
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 
@@ -50,6 +62,13 @@ def is_valid_dir(pathToDir):
         raise argparse.ArgumentTypeError(msg)
     else:
         return pathToDir
+
+def printError(msg):
+	print(bcolors.FAIL + str(msg) + bcolors.ENDC)
+def printWarning(msg):
+	print(bcolors.WARNING + str(msg) + bcolors.ENDC)
+def printSuccess(msg):
+	print(bcolors.OKGREEN + str(msg) + bcolors.ENDC)
 ################################### END Utils ###################################
 
 
@@ -84,15 +103,32 @@ def check_args():
 
 
 def read_config(pathToFile):
+	## TODO try except
 	with open(pathToFile) as config_file:
 		config = json.load(config_file)
-	mysql_db_list(config['config'])
+		return config['config']
+	#mysql_db_list(config['config'])
 	
+def connect_db(configObj):
+	try:
+		# Connect to the database
+		db = pymysql.connect(host = configObj['host'],
+                             user = configObj['user'],
+                             password = configObj['pwd'],
+                             db = configObj['db'],
+                             charset = 'utf8',
+                             cursorclass = pymysql.cursors.DictCursor)
+	except Exception as e:
+		printError(e)
+		printError("FAILED")
+		os._exit(1)
+	finally:
+		return db
 
-def mysql_db_list(configObj):
-	to_ignore = ['information_schema', 'performance_schema', 'test']
-	command = ['mysql', '-u '+configObj['user'], '-p', '-h '+configObj['host'], '-se', 'show databases']
-	pprint(command)
+#def mysql_db_list(configObj):
+#	to_ignore = ['information_schema', 'performance_schema', 'test']
+#	command = ['mysql', '-u '+configObj['user'], '-p', '-h '+configObj['host'], '-se', 'show databases']
+#	pprint(command)
 	#p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 ################################### END Core funcs ###################################
 
@@ -100,9 +136,30 @@ def mysql_db_list(configObj):
 def main():
 	args = check_args()
 	try:
-		read_config(args.config)
+		config = read_config(args.config)
 	except AttributeError:
-		read_config(args)
+		printWarning("Didn't find '--config' param. Try to read 'config.json'...")
+		config = read_config(args)
+		printSuccess("DONE")
+
+	if config:
+		
+		printSuccess("Connecting to db... --->  "+ config['user'] + '@' + config['host'] + " | DB: " + config['db'])
+		db = connect_db(config)
+		printSuccess("DONE")
+		# prepare a cursor object using cursor() method
+		with db.cursor() as cursor:
+			# Create a new record
+			sql = "SELECT * FROM bus_places WHERE %s"
+			cursor.execute(sql, ('1',))
+			result = cursor.fetchone()
+
+
+		printSuccess("Close connection...")
+		db.close()
+		printSuccess("DONE")
+		pprint(result)
+
 
 if __name__ == "__main__":
-    main()
+	main()
