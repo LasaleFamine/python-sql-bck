@@ -7,19 +7,21 @@
 
 #{ 
 #	"config": 
-#	{ 
+#	[{ 
 #		"user": "username",
 #		"pwd": "pwdvalue",
 #		"db": "dbname",
 #		"host": "hostvalue"
-#	}
+#	}]
 #}
 
 import os
 import argparse
 import json
+from datetime import datetime
 from pprint import pprint
 import pymysql.cursors
+import subprocess
 
 
 class bcolors:
@@ -38,6 +40,11 @@ class bcolors:
 parser.add_argument('--compress', action='store_true', help='Compress the backup files')
 parser.add_argument('--age', type=int, help='Delete backup files older than the specified amount of days')
 """
+#f = gzip.open(out_filename, "wb")
+#f.write(dump_output)
+#f.close()
+
+
 ################################### Utils ###################################
 def is_valid_json_file(pathToFile):
 	# Check for a valid json file
@@ -77,29 +84,24 @@ def check_args():
 	# Check argument passed and set help description
 	# Returns: <string>"config.json" or <obj>args
 	parse = argparse.ArgumentParser(formatter_class = argparse.RawTextHelpFormatter)
-
 	parse.add_argument('--config', action = 'store', type = is_valid_json_file, help = 
 						(	
 							"Path to a config JSON file with the following contents [default: \"config.json\"]:\n"
 							"\n"
 							"{\n"
 							"\"config\":\n" 
-							"\t{\n" 
+							"\t[{\n" 
 								"\t\"user\": \"username\",\n"
 								"\t\"pwd\": \"pwdvalue\",\n"
 								"\t\"db\": \"dbname\",\n"
 								"\t\"host\": \"hostvalue\"\n"
-							"\t}\n"
+							"\t}]\n"
 							"}\n"
 						)
 					)
-	parse.add_argument('--directory', type = is_valid_dir, required = True, help = 'Path to backup directory')
-	# If not config
-	if not parse.parse_args().config:
-		return is_valid_json_file('config.json')
+	parse.add_argument('--directory',type = is_valid_dir, required = True, help = 'Path to backup directory')
+	parse.add_argument('--gz', action = 'store_true', help = 'Compress in gzip')
 	return parse.parse_args()
-
-
 
 
 def read_config(pathToFile):
@@ -107,6 +109,7 @@ def read_config(pathToFile):
 	with open(pathToFile) as config_file:
 		config = json.load(config_file)
 		return config['config']
+
 	#mysql_db_list(config['config'])
 	
 def connect_db(configObj):
@@ -125,6 +128,24 @@ def connect_db(configObj):
 	finally:
 		return db
 
+def make_backup(configObjS, directory, gz):
+	for configObj in configObjS:
+		printSuccess("Connecting to db... --->  "+ configObj['user'] + '@' + configObj['host'] + " | DB: " + configObj['db'])
+		mysqlDump = 'mysqldump -h ' + configObj['host'] + ' -P 3306 -u ' + configObj['user'] + ' -p"' + configObj['pwd'] +  '" ' + configObj['db'] +' > ' + directory + configObj['db'] + '_' + datetime.now().strftime('%Y-%m-%d-%H-%M-%S') +  '.sql'
+		
+		if gz == True:
+			mysqlDump = 'mysqldump -h ' + configObj['host'] + ' -P 3306 -u ' + configObj['user'] + ' -p"' + configObj['pwd'] +  '" ' + configObj['db'] +' | gzip -c  > ' + directory + configObj['db'] + '_' + datetime.now().strftime('%Y-%m-%d-%H-%M-%S') +  '.sql.gz'
+
+		try:		
+			subprocess.Popen(mysqlDump,  shell=True)
+		except Exception as e:
+			print(str(e))
+			return False
+		finally:
+			pass
+
+	return True
+
 #def mysql_db_list(configObj):
 #	to_ignore = ['information_schema', 'performance_schema', 'test']
 #	command = ['mysql', '-u '+configObj['user'], '-p', '-h '+configObj['host'], '-se', 'show databases']
@@ -134,31 +155,42 @@ def connect_db(configObj):
 
 ################################### Main ###################################
 def main():
+
 	args = check_args()
-	try:
-		config = read_config(args.config)
-	except AttributeError:
+	configFile = args.config
+	directory = args.directory
+	gz = args.gz
+
+	# If not config
+	if not configFile:
 		printWarning("Didn't find '--config' param. Try to read 'config.json'...")
-		config = read_config(args)
+		configFile = is_valid_json_file('config.json')
+
+	try:
+		config = read_config(configFile)
+	## TODO Exception to handle
+	finally:
 		printSuccess("DONE")
 
-	if config:
-		
-		printSuccess("Connecting to db... --->  "+ config['user'] + '@' + config['host'] + " | DB: " + config['db'])
-		db = connect_db(config)
-		printSuccess("DONE")
+	if config:		
+		#db = connect_db(config)
+		try:
+			backupped = make_backup(config, directory, gz)
+		finally:
+			printSuccess("DONE")
+
 		# prepare a cursor object using cursor() method
-		with db.cursor() as cursor:
-			# Create a new record
-			sql = "SELECT * FROM bus_places WHERE %s"
-			cursor.execute(sql, ('1',))
-			result = cursor.fetchone()
+		#witsh db.cursor() as cursor:
+		#	# Create a new record
+		#	sql = "SELECT * FROM bus_places WHERE %s"
+		#	cursor.execute(sql, ('1',))
+		#	result = cursor.fetchone()
 
 
 		printSuccess("Close connection...")
-		db.close()
+		#db.close()
 		printSuccess("DONE")
-		pprint(result)
+		#pprint(result)
 
 
 if __name__ == "__main__":
