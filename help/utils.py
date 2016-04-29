@@ -1,9 +1,4 @@
 
-"""parser.add_argument('--backup-directory', type=is_dir, required=True, help='Target directory for the backup')
-parser.add_argument('--compress', action='store_true', help='Compress the backup files')
-parser.add_argument('--age', type=int, help='Delete backup files older than the specified amount of days')
-"""
-
 #!/usr/bin/python
 
 # python-sql-backup/help/utils.py
