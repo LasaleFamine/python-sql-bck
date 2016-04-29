@@ -1,6 +1,7 @@
 # python-sql-bck
 ## Description
 A configurable script written in Python 3.5 to make backups of your SQL dbs. 
+Fork or help me to improve this simple program.
 
 ## Pre-configuration and dependencies 
 You need the following pre-installed before using **`pySQLBck`**
@@ -22,6 +23,8 @@ Example of `config.json` file:
 	}]
 }
 ```
+#### Note
+As you can see the `config` param is an array. The script will handle also more configuration paramas.
 
 ## Usage
 ``` sh
@@ -29,9 +32,9 @@ $ pySQLBck.py [-h] [--config CONFIG] --directory DIRECTORY [--gz]
 ```
 
 ## Help 
-  -h, --help            show the help message and exit 
-  --config CONFIG       Path to a config JSON file with the following contents [default: "config.json"] 
-  --directory DIRECTORY Path to backup directory 
+  -h, --help            show the help message and exit  
+  --config CONFIG       Path to a config JSON file with the following contents [default: "config.json"]  
+  --directory DIRECTORY Path to backup directory  
   --gz                  Compress in gzip 
 ## License
 MIT
